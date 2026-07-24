@@ -8,6 +8,7 @@ class Municipality(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(5), unique=True, index=True, nullable=False)
+    parent_code = Column(String(5), index=True, nullable=True)
     prefecture_code = Column(String(2), index=True, nullable=False)
     prefecture_name = Column(String, index=True, nullable=False)
     district_name = Column(String, index=True, nullable=True)

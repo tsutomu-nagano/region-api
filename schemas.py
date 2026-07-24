@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 class Municipality(BaseModel):
     id: int
     code: str
+    parent_code: Optional[str] = None
     prefecture_code: str
     prefecture_name: str
     district_name: Optional[str] = None

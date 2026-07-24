@@ -34,6 +34,7 @@ def read_municipalities(
     prefecture_code: Optional[str] = Query(None, description="都道府県コードによる絞り込み"),
     prefecture_name: Optional[str] = Query(None, description="都道府県名による絞り込み"),
     code: Optional[str] = Query(None, description="標準地域コードによる絞り込み"),
+    parent_code: Optional[str] = Query(None, description="親の標準地域コードによる絞り込み"),
     has_merger_info: Optional[bool] = Query(None, description="廃置分合等情報有無による絞り込み"),
     effective_date_from: Optional[date] = Query(None, description="施行日の開始日 (YYYY-MM-DD)"),
     effective_date_to: Optional[date] = Query(None, description="施行日の終了日 (YYYY-MM-DD)"),
@@ -46,6 +47,8 @@ def read_municipalities(
         query = query.filter(models.Municipality.prefecture_name == prefecture_name)
     if code:
         query = query.filter(models.Municipality.code == code)
+    if parent_code:
+        query = query.filter(models.Municipality.parent_code == parent_code)
     if has_merger_info is not None:
         query = query.filter(models.Municipality.has_merger_info == has_merger_info)
     if effective_date_from:
@@ -87,6 +90,20 @@ def read_municipality(code: str, db: Session = Depends(get_db)):
     if municipality is None:
         raise HTTPException(status_code=404, detail="Municipality not found")
     return municipality
+
+
+@app.get(
+    "/api/v1/municipalities/{code}/children",
+    response_model=list[schemas.Municipality],
+    summary="子の標準地域一覧の取得",
+)
+def read_municipality_children(code: str, db: Session = Depends(get_db)):
+    return (
+        db.query(models.Municipality)
+        .filter(models.Municipality.parent_code == code)
+        .order_by(models.Municipality.code)
+        .all()
+    )
 
 
 @app.get("/api/v1/sources", response_model=list[schemas.SourceFileState], summary="CSV取り込み状態の取得")

@@ -57,10 +57,30 @@ def read_csv_rows(path: Path) -> Iterable[dict]:
         yield from csv.DictReader(file)
 
 
-def build_municipality(row: dict) -> models.Municipality:
+def municipality_parent_key(row: dict) -> tuple[str, str]:
+    return (
+        row["都道府県"].strip(),
+        row["政令市･郡･支庁･振興局等"].strip(),
+    )
+
+
+def build_parent_code_lookup(rows: list[dict]) -> dict[tuple[str, str], str]:
+    parents = {}
+    for row in rows:
+        key = municipality_parent_key(row)
+        if key[1] and not row["市区町村"].strip():
+            parents[key] = row["標準地域コード"].strip()
+    return parents
+
+
+def build_municipality(row: dict, parent_codes: dict[tuple[str, str], str]) -> models.Municipality:
     code = row["標準地域コード"].strip()
+    parent_code = None
+    if row["市区町村"].strip():
+        parent_code = parent_codes.get(municipality_parent_key(row))
     return models.Municipality(
         code=code,
+        parent_code=parent_code,
         prefecture_code=code[:2],
         prefecture_name=row["都道府県"].strip(),
         district_name=none_if_blank(row["政令市･郡･支庁･振興局等"]),
@@ -117,15 +137,17 @@ def replace_source(
 
 
 def refresh_from_csv(db: Session, force: bool = False) -> tuple[bool, list[models.SourceFileState]]:
-    ensure_current_schema(db)
+    schema_changed = ensure_current_schema(db)
     lock_refresh(db)
 
-    changed = force
+    changed = force or schema_changed
     changed = changed or has_source_changed(db, "municipality", MUNICIPALITY_CSV)
     changed = changed or has_source_changed(db, "merger", MERGER_CSV)
 
     if changed:
-        municipalities = [build_municipality(row) for row in read_csv_rows(MUNICIPALITY_CSV)]
+        municipality_rows = list(read_csv_rows(MUNICIPALITY_CSV))
+        parent_codes = build_parent_code_lookup(municipality_rows)
+        municipalities = [build_municipality(row, parent_codes) for row in municipality_rows]
         mergers = [build_merger(row) for row in read_csv_rows(MERGER_CSV)]
         replace_source(db, "municipality", MUNICIPALITY_CSV, models.Municipality, municipalities)
         replace_source(db, "merger", MERGER_CSV, models.Merger, mergers)
@@ -140,12 +162,14 @@ def lock_refresh(db: Session) -> None:
         db.execute(text("SELECT pg_advisory_xact_lock(7420250724)"))
 
 
-def ensure_current_schema(db: Session) -> None:
+def ensure_current_schema(db: Session) -> bool:
     bind = db.get_bind()
     inspector = inspect(bind)
+    schema_changed = False
     required_columns = {
         "municipalities": {
             "code",
+            "parent_code",
             "prefecture_code",
             "prefecture_name",
             "district_name",
@@ -182,6 +206,10 @@ def ensure_current_schema(db: Session) -> None:
         if not inspector.has_table(table_name):
             continue
         existing_columns = {column["name"] for column in inspector.get_columns(table_name)}
+        if table_name == "municipalities" and "parent_code" not in existing_columns:
+            db.execute(text("ALTER TABLE municipalities ADD COLUMN parent_code VARCHAR(5)"))
+            existing_columns.add("parent_code")
+            schema_changed = True
         if not columns.issubset(existing_columns):
             stale_tables.append(table_name)
         if table_name == "mergers":
@@ -209,3 +237,4 @@ def ensure_current_schema(db: Session) -> None:
         )
 
     models.Base.metadata.create_all(bind=bind)
+    return schema_changed

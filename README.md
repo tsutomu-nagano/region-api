@@ -18,6 +18,7 @@
 
 - `GET /api/v1/municipalities`
 - `GET /api/v1/municipalities/{code}`
+- `GET /api/v1/municipalities/{code}/children`
 - `GET /api/v1/mergers`
 - `GET /api/v1/sources`
 
@@ -33,8 +34,24 @@ API:
 
 - `GET http://localhost:8000/api/v1/municipalities`
 - `GET http://localhost:8000/api/v1/municipalities/{code}`
+- `GET http://localhost:8000/api/v1/municipalities/{code}/children`
 - `GET http://localhost:8000/api/v1/mergers`
 - `GET http://localhost:8000/api/v1/sources`
+
+## 親子関係
+
+政令指定都市と行政区のような階層関係は、子側の `parent_code` で表します。
+
+例:
+
+- 札幌市: `code = 01100`, `parent_code = null`
+- 中央区: `code = 01101`, `parent_code = 01100`
+
+子の一覧は以下で取得できます。
+
+```text
+GET /api/v1/municipalities/01100/children
+```
 
 ## Neonを使う場合
 
