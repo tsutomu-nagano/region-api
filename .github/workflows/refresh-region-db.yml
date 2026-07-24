@@ -1,0 +1,46 @@
+name: Refresh region database
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "変更有無にかかわらず再取り込みする"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+  schedule:
+    # JST 04:00 / UTC 19:00
+    - cron: "0 19 * * *"
+
+concurrency:
+  group: refresh-region-db
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Refresh database
+        run: |
+          if [ "${{ inputs.force }}" = "true" ]; then
+            python seed.py --force
+          else
+            python seed.py
+          fi

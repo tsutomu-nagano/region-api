@@ -1,0 +1,42 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://region:region@db:5432/region
+      AUTO_REFRESH_ON_STARTUP: "false"
+      ENABLE_REFRESH_ENDPOINT: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  refresh:
+    build: .
+    command: ["python", "seed.py", "--force"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://region:region@db:5432/region
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - tools
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: region
+      POSTGRES_USER: region
+      POSTGRES_PASSWORD: region
+    ports:
+      - "5432:5432"
+    volumes:
+      - region-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U region -d region"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  region-postgres-data:

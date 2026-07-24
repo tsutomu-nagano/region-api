@@ -1,27 +1,51 @@
-from pydantic import BaseModel, ConfigDict
+from datetime import date, datetime
 from typing import Optional
-from datetime import date
 
-class MunicipalityBase(BaseModel):
+from pydantic import BaseModel, ConfigDict
+
+
+class Municipality(BaseModel):
+    id: int
     code: str
     prefecture_code: str
-    name: str
-    kana: Optional[str] = None
-
-class Municipality(MunicipalityBase):
-    id: int
+    prefecture_name: str
+    district_name: Optional[str] = None
+    district_kana: Optional[str] = None
+    municipality_name: Optional[str] = None
+    municipality_kana: Optional[str] = None
+    effective_date: Optional[date] = None
+    has_merger_info: bool
 
     model_config = ConfigDict(from_attributes=True)
 
-class MergerBase(BaseModel):
-    effective_date: date
+
+class Merger(BaseModel):
+    id: int
+    code: str
+    prefecture_code: str
+    prefecture_name: str
+    district_name: Optional[str] = None
+    district_kana: Optional[str] = None
+    municipality_name: Optional[str] = None
+    municipality_kana: Optional[str] = None
+    effective_date: Optional[date] = None
     reason: str
-    old_code: str
-    old_name: str
-    new_code: str
-    new_name: str
-
-class Merger(MergerBase):
-    id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class SourceFileState(BaseModel):
+    source_name: str
+    path: str
+    size: int
+    mtime: datetime
+    sha256: str
+    imported_at: datetime
+    row_count: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RefreshResult(BaseModel):
+    refreshed: bool
+    sources: list[SourceFileState]
