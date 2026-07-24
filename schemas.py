@@ -44,8 +44,3 @@ class SourceFileState(BaseModel):
     row_count: int
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class RefreshResult(BaseModel):
-    refreshed: bool
-    sources: list[SourceFileState]

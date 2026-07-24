@@ -60,8 +60,6 @@ postgresql+psycopg://USER:PASSWORD@HOST/DBNAME?sslmode=require
 環境変数:
 
 - `DATABASE_URL`: Neonの接続文字列
-- `AUTO_REFRESH_ON_STARTUP`: `false`
-- `ENABLE_REFRESH_ENDPOINT`: `false`
 
 ## 更新方針
 

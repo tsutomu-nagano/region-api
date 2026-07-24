@@ -1,12 +1,9 @@
-from contextlib import asynccontextmanager
 from datetime import date
-import os
 from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlalchemy.orm import Session
 
-import importer
 import models
 import schemas
 from database import SessionLocal, engine
@@ -15,22 +12,10 @@ from database import SessionLocal, engine
 models.Base.metadata.create_all(bind=engine)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    if os.getenv("AUTO_REFRESH_ON_STARTUP", "false").lower() == "true":
-        db = SessionLocal()
-        try:
-            importer.refresh_from_csv(db)
-        finally:
-            db.close()
-    yield
-
-
 app = FastAPI(
     title="標準地域・廃置分合 API",
     description="Municipality.csv と Merger.csv をDBに同期し、標準地域および廃置分合情報を提供するAPIです。",
     version="1.0.0",
-    lifespan=lifespan,
 )
 
 
@@ -107,14 +92,3 @@ def read_municipality(code: str, db: Session = Depends(get_db)):
 @app.get("/api/v1/sources", response_model=list[schemas.SourceFileState], summary="CSV取り込み状態の取得")
 def read_sources(db: Session = Depends(get_db)):
     return db.query(models.SourceFileState).order_by(models.SourceFileState.source_name).all()
-
-
-@app.post("/api/v1/sources/refresh", response_model=schemas.RefreshResult, summary="CSVからDBを更新")
-def refresh_sources(
-    force: bool = Query(False, description="変更有無にかかわらず再取り込みする"),
-    db: Session = Depends(get_db),
-):
-    if os.getenv("ENABLE_REFRESH_ENDPOINT", "false").lower() != "true":
-        raise HTTPException(status_code=404, detail="Refresh endpoint is disabled")
-    refreshed, states = importer.refresh_from_csv(db, force=force)
-    return schemas.RefreshResult(refreshed=refreshed, sources=states)

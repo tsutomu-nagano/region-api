@@ -5,8 +5,6 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql+psycopg://region:region@db:5432/region
-      AUTO_REFRESH_ON_STARTUP: "false"
-      ENABLE_REFRESH_ENDPOINT: "false"
     depends_on:
       db:
         condition: service_healthy
