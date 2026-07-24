@@ -9,6 +9,18 @@
 - 更新: GitHub Actionsから `python seed.py` を定期実行
 - APIコンテナ: 原則読み取り専用
 
+## 公開API
+
+- Base URL: `https://region-api-4yia.onrender.com`
+- API Docs: `https://region-api-4yia.onrender.com/docs`
+
+主要エンドポイント:
+
+- `GET /api/v1/municipalities`
+- `GET /api/v1/municipalities/{code}`
+- `GET /api/v1/mergers`
+- `GET /api/v1/sources`
+
 ## ローカル起動
 
 ```bash
