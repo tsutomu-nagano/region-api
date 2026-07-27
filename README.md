@@ -5,6 +5,7 @@
 ## 構成
 
 - API: FastAPI
+- サンプルWebアプリ: React + Vite
 - DB: PostgreSQL（本番はNeon想定）
 - 更新: GitHub Actionsから `python seed.py` を定期実行
 - APIコンテナ: 原則読み取り専用
@@ -37,6 +38,18 @@ API:
 - `GET http://localhost:8000/api/v1/municipalities/{code}/children`
 - `GET http://localhost:8000/api/v1/mergers`
 - `GET http://localhost:8000/api/v1/sources`
+
+サンプルWebアプリ:
+
+```bash
+docker compose up --build api frontend
+```
+
+- `http://localhost:5174`
+
+`frontend/src/components/MergerHistoryGraph.tsx` は、取得済みの廃置分合データを受け取って表示するReactコンポーネントです。
+
+公開APIへローカルのサンプルWebアプリからアクセスする場合は、APIデプロイ先の環境変数 `CORS_ALLOW_ORIGINS` に利用するURLを追加してください。
 
 ## 親子関係
 

@@ -1,7 +1,9 @@
+import os
 from datetime import date
 from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 import models
@@ -16,6 +18,28 @@ app = FastAPI(
     title="標準地域・廃置分合 API",
     description="Municipality.csv と Merger.csv をDBに同期し、標準地域および廃置分合情報を提供するAPIです。",
     version="1.0.0",
+)
+
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOW_ORIGINS",
+        "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174",
+    ).split(",")
+    if origin.strip()
+]
+allowed_origin_regex = os.getenv(
+    "CORS_ALLOW_ORIGIN_REGEX",
+    r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_origin_regex=allowed_origin_regex,
+    allow_credentials=False,
+    allow_methods=["GET"],
+    allow_headers=["*"],
 )
 
 
