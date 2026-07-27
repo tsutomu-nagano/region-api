@@ -5,9 +5,19 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql+psycopg://region:region@db:5432/region
+      CORS_ALLOW_ORIGINS: http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174
     depends_on:
       db:
         condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5174:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    depends_on:
+      - api
 
   refresh:
     build: .

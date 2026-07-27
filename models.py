@@ -1,6 +1,7 @@
 from sqlalchemy import Boolean, Column, Date, DateTime, Integer, String, Text
 
 from database import Base
+from merger_events import MergerEvent, parse_merger_events
 
 
 class Municipality(Base):
@@ -32,6 +33,18 @@ class Merger(Base):
     municipality_kana = Column(String, nullable=True)
     effective_date = Column(Date, index=True, nullable=True)
     reason = Column(Text, nullable=False)
+
+    @property
+    def reason_events(self) -> list[MergerEvent]:
+        return parse_merger_events(
+            self.reason,
+            fallback_target_code=self.code,
+            fallback_target_names=[
+                name
+                for name in [self.municipality_name, self.district_name]
+                if name is not None
+            ],
+        )
 
 
 class SourceFileState(Base):

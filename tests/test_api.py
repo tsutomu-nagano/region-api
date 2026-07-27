@@ -88,6 +88,68 @@ def test_mergers_api_returns_csv_backed_rows():
     assert len(response.json()) == 1
     assert response.json()[0]["code"]
     assert response.json()[0]["reason"]
+    assert response.json()[0]["reason_events"]
+
+
+def test_mergers_api_preserves_multiple_history_rows_for_same_code():
+    seed_test_database()
+
+    with TestClient(app) as client:
+        response = client.get("/api/v1/mergers", params={"code": "01202", "limit": 10})
+
+    assert response.status_code == 200
+    histories = response.json()
+
+    assert [item["effective_date"] for item in histories] == [
+        "1973-12-01",
+        "2000-11-01",
+        "2004-12-01",
+        "2005-10-01",
+    ]
+    assert [item["reason"] for item in histories] == [
+        "亀田市(01232)が函館市(01202)に編入",
+        "函館市(01202)が特例市に移行",
+        "戸井町(01339)、恵山町(01340)、椴法華村(01341)、南茅部町(01342)が函館市(01202)に編入",
+        "函館市(01202)が特例市から中核市に移行",
+    ]
+
+
+def test_mergers_api_returns_machine_readable_reason_events():
+    seed_test_database()
+
+    with TestClient(app) as client:
+        merge_response = client.get("/api/v1/mergers", params={"code": "01236"})
+        absorption_response = client.get(
+            "/api/v1/mergers",
+            params={"code": "01202", "effective_date_from": "1973-12-01", "effective_date_to": "1973-12-01"},
+        )
+        status_response = client.get("/api/v1/mergers", params={"code": "01230"})
+        inferred_merge_response = client.get("/api/v1/mergers", params={"code": "01206"})
+
+    assert merge_response.status_code == 200
+    assert absorption_response.status_code == 200
+    assert status_response.status_code == 200
+    assert inferred_merge_response.status_code == 200
+
+    merge_events = merge_response.json()[0]["reason_events"]
+    absorption_events = absorption_response.json()[0]["reason_events"]
+    status_events = status_response.json()[0]["reason_events"]
+    inferred_merge_events = inferred_merge_response.json()[0]["reason_events"]
+
+    assert merge_events[0]["type"] == "merge_new"
+    assert {"code": "01335", "name": "上磯町", "code_inferred": False} in merge_events[0]["source_municipalities"]
+    assert {"code": "01236", "name": "北斗市", "code_inferred": False} in merge_events[0]["target_municipalities"]
+
+    assert absorption_events[0]["type"] == "absorption"
+    assert {"code": "01232", "name": "亀田市", "code_inferred": False} in absorption_events[0]["source_municipalities"]
+    assert {"code": "01202", "name": "函館市", "code_inferred": False} in absorption_events[0]["target_municipalities"]
+
+    assert status_events[0]["type"] == "city_status"
+    assert {"code": "01577", "name": "登別町", "code_inferred": False} in status_events[0]["source_municipalities"]
+    assert {"code": "01230", "name": "登別市", "code_inferred": False} in status_events[0]["target_municipalities"]
+
+    assert inferred_merge_events[0]["type"] == "merge_new"
+    assert {"code": "01206", "name": "釧路市", "code_inferred": True} in inferred_merge_events[0]["target_municipalities"]
 
 
 def test_refresh_endpoint_is_not_exposed():
