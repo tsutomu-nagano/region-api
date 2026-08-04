@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="frontend/public/assets/region-api-logo.jpg" alt="region api" width="320">
+</p>
+
 # 標準地域・廃置分合 API
 
 `Municipality.csv` と `Merger.csv` をPostgreSQLへ同期し、FastAPIで読み取りAPIを提供します。
@@ -48,6 +52,8 @@ docker compose up --build api frontend
 - `http://localhost:5174`
 
 `frontend/src/components/MergerHistoryGraph.tsx` は、取得済みの廃置分合データを受け取って表示するReactコンポーネントです。
+
+ロゴ画像は `frontend/public/assets/region-api-logo.jpg` に配置し、サンプルWebアプリの上部ヘッダーで表示しています。
 
 公開APIへローカルのサンプルWebアプリからアクセスする場合は、APIデプロイ先の環境変数 `CORS_ALLOW_ORIGINS` に利用するURLを追加してください。
 

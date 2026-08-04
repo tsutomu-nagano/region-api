@@ -5,36 +5,34 @@ type MergerHistoryGraphProps = {
   municipalityCode?: string;
 };
 
-const EVENT_COLORS: Record<string, string> = {
-  merge_new: "#0f766e",
-  absorption: "#2563eb",
-  new_establishment: "#0891b2",
-  split: "#c2410c",
-  city_status: "#7c3aed",
-  town_status: "#9333ea",
-  rename: "#be123c",
-  designated_city: "#047857",
-  core_city: "#0369a1",
-  special_city: "#4f46e5",
-};
+const STATUS_CHANGE_TYPES = new Set(["special_city", "core_city"]);
 
 function displayName(merger: Merger): string {
   return merger.municipality_name || merger.district_name || merger.prefecture_name;
 }
 
-function refLabel(ref: MunicipalityRef): string {
-  return ref.code ? `${ref.name} (${ref.code})` : ref.name;
+function fallbackTarget(merger: Merger): MunicipalityRef {
+  return {
+    code: merger.code,
+    name: displayName(merger),
+    code_inferred: false,
+  };
 }
 
-function refsLabel(refs: MunicipalityRef[], emptyLabel: string): string {
-  if (refs.length === 0) {
-    return emptyLabel;
+function refText(ref: MunicipalityRef): string {
+  return ref.code ? `${ref.name} ${ref.code}` : ref.name;
+}
+
+function isStatusChange(merger: Merger): boolean {
+  return STATUS_CHANGE_TYPES.has(merger.reason_events[0]?.type || "");
+}
+
+function eventLabel(merger: Merger): string {
+  const label = merger.reason_events[0]?.label;
+  if (label) {
+    return label;
   }
-  return refs.map(refLabel).join("、");
-}
-
-function eventColor(merger: Merger): string {
-  return EVENT_COLORS[merger.reason_events[0]?.type || ""] || "#475569";
+  return isStatusChange(merger) ? "都市種別変更" : "廃置分合";
 }
 
 export function MergerHistoryGraph({ mergers, municipalityCode }: MergerHistoryGraphProps) {
@@ -50,71 +48,76 @@ export function MergerHistoryGraph({ mergers, municipalityCode }: MergerHistoryG
     );
   }
 
-  const width = 960;
-  const rowHeight = 112;
-  const topPadding = 40;
-  const bottomPadding = 40;
-  const height = topPadding + bottomPadding + Math.max(1, sortedMergers.length - 1) * rowHeight;
-  const centerX = width / 2;
-
   return (
-    <section className="history-graph" aria-label="廃置分合履歴">
-      <div className="graph-header">
+    <section className="timeline-panel" aria-label="廃置分合履歴">
+      <div className="timeline-panel-header">
         <div>
-          <p className="eyebrow">Merger History</p>
-          <h2>{municipalityCode ? `${municipalityCode} の廃置分合履歴` : "廃置分合履歴"}</h2>
+          <p className="eyebrow">Timeline</p>
+          <h3>{municipalityCode ? `${municipalityCode} の変更履歴` : "変更履歴"}</h3>
         </div>
-        <p className="history-count">{sortedMergers.length.toLocaleString("ja-JP")}件</p>
+        <div className="timeline-legend" aria-label="凡例">
+          <span><i className="legend-dot is-merger" />合併・編入</span>
+          <span><i className="legend-dot is-status" />都市種別変更</span>
+        </div>
       </div>
 
-      <div className="timeline" role="list">
-        <svg viewBox={`0 0 ${width} ${height}`} className="timeline-svg" aria-hidden="true">
-          <line x1={centerX} y1={topPadding} x2={centerX} y2={height - bottomPadding} className="timeline-line" />
-          {sortedMergers.map((merger, index) => {
-            const y = topPadding + index * rowHeight;
-            const color = eventColor(merger);
-            return (
-              <g key={merger.id}>
-                <circle cx={centerX} cy={y} r="10" fill={color} />
-                <line x1={centerX - 10} y1={y} x2={index % 2 === 0 ? 252 : 708} y2={y} stroke={color} strokeWidth="2" />
-              </g>
-            );
-          })}
-        </svg>
+      <ol className="timeline-list">
+        {sortedMergers.map((merger) => {
+          const event = merger.reason_events[0];
+          const statusChange = isStatusChange(merger);
+          const sources = statusChange ? [] : event?.source_municipalities || [];
+          const targets = statusChange ? [] : event?.target_municipalities.length ? event.target_municipalities : [fallbackTarget(merger)];
 
-        <div className="timeline-items">
-          {sortedMergers.map((merger, index) => {
-            const event = merger.reason_events[0];
-            const y = topPadding + index * rowHeight;
-            const sideClass = index % 2 === 0 ? "is-left" : "is-right";
-            return (
-              <article
-                className={`history-card ${sideClass}`}
-                key={merger.id}
-                role="listitem"
-                style={{ top: `${y}px`, borderColor: eventColor(merger) }}
-              >
-                <div className="card-topline">
+          return (
+            <li className={`timeline-event${statusChange ? " is-status-change" : ""}`} key={merger.id}>
+              <div className="timeline-stem" aria-hidden="true">
+                <span className="timeline-marker" />
+              </div>
+
+              <article className="timeline-card">
+                <div className="timeline-card-top">
                   <time>{merger.effective_date || "施行日不明"}</time>
-                  <span>{event?.label || "その他"}</span>
+                  <span className="event-pill">{statusChange ? "都市種別変更" : eventLabel(merger)}</span>
                 </div>
-                <h3>{displayName(merger)}</h3>
-                <dl>
-                  <div>
-                    <dt>変更元</dt>
-                    <dd>{refsLabel(event?.source_municipalities || [], "記載なし")}</dd>
-                  </div>
-                  <div>
-                    <dt>変更先</dt>
-                    <dd>{refsLabel(event?.target_municipalities || [], `${displayName(merger)} (${merger.code})`)}</dd>
-                  </div>
-                </dl>
+
+                <h4>{displayName(merger)}</h4>
                 <p>{merger.reason}</p>
+
+                {!statusChange && (
+                  <div className="municipality-flow" aria-label="変更元と変更先">
+                    <div className="municipality-chip-group">
+                      {sources.length ? (
+                        sources.map((ref) => (
+                          <span className="municipality-chip" key={`source-${merger.id}-${ref.code || ref.name}`}>
+                            <small>変更元</small>
+                            {refText(ref)}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="municipality-chip is-muted">
+                          <small>変更元</small>
+                          記載なし
+                        </span>
+                      )}
+                    </div>
+
+                    <span className="flow-arrow" aria-hidden="true">→</span>
+
+                    <div className="municipality-chip-group">
+                      {targets.map((ref) => (
+                        <span className="municipality-chip is-target" key={`target-${merger.id}-${ref.code || ref.name}`}>
+                          <small>変更先</small>
+                          {refText(ref)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </article>
-            );
-          })}
-        </div>
-      </div>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }

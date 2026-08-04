@@ -10,3 +10,7 @@ venv/
 
 .env
 .env.*
+
+PROJECT_STATUS.md
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
