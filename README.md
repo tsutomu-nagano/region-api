@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="frontend/public/assets/region-api-logo.jpg" alt="region api" width="320">
+  <img src="frontend/public/assets/logo.png" alt="region api" width="320">
 </p>
 
 # 標準地域・廃置分合 API
