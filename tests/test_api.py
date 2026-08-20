@@ -91,6 +91,38 @@ def test_mergers_api_returns_csv_backed_rows():
     assert response.json()[0]["reason_events"]
 
 
+def test_municipalities_search_returns_rows_by_municipality_name():
+    seed_test_database()
+
+    with TestClient(app) as client:
+        response = client.get("/api/v1/municipalities/search", params={"name": "函館市"})
+        kana_response = client.get("/api/v1/municipalities/search", params={"name": "はこだてし"})
+
+    assert response.status_code == 200
+    assert kana_response.status_code == 200
+    assert [item["code"] for item in response.json()] == ["01202"]
+    assert [item["code"] for item in kana_response.json()] == ["01202"]
+
+
+def test_municipalities_search_uses_district_name_for_city_rows_without_municipality_name():
+    seed_test_database()
+
+    with TestClient(app) as client:
+        response = client.get("/api/v1/municipalities/search", params={"name": "札幌市"})
+        partial_response = client.get(
+            "/api/v1/municipalities/search",
+            params={"name": "札幌", "match": "partial", "limit": 20},
+        )
+
+    assert response.status_code == 200
+    assert partial_response.status_code == 200
+    assert [item["code"] for item in response.json()] == ["01100"]
+
+    partial_codes = [item["code"] for item in partial_response.json()]
+    assert "01100" in partial_codes
+    assert "01101" in partial_codes
+
+
 def test_mergers_api_preserves_multiple_history_rows_for_same_code():
     seed_test_database()
 

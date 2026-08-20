@@ -1,9 +1,10 @@
 import os
 from datetime import date
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 import models
@@ -106,6 +107,63 @@ def read_mergers(
     if effective_date_to:
         query = query.filter(models.Merger.effective_date <= effective_date_to)
     return query.order_by(models.Merger.effective_date, models.Merger.code).offset(skip).limit(limit).all()
+
+
+@app.get(
+    "/api/v1/municipalities/search",
+    response_model=list[schemas.Municipality],
+    summary="市区町村名から標準地域を検索",
+)
+def search_municipalities_by_name(
+    name: str = Query(..., min_length=1, description="検索する市区町村名またはふりがな"),
+    match: Literal["exact", "partial"] = Query("exact", description="exact: 完全一致、partial: 部分一致"),
+    prefecture_code: Optional[str] = Query(None, description="都道府県コードによる絞り込み"),
+    prefecture_name: Optional[str] = Query(None, description="都道府県名による絞り込み"),
+    include_district: bool = Query(
+        True,
+        description="partial検索時に政令市・郡・支庁・振興局等の名称/ふりがなも検索対象に含める",
+    ),
+    limit: int = Query(20, ge=1, le=100, description="取得する最大件数"),
+    db: Session = Depends(get_db),
+):
+    normalized_name = name.strip()
+    if not normalized_name:
+        raise HTTPException(status_code=422, detail="name must not be blank")
+
+    query = db.query(models.Municipality)
+    if prefecture_code:
+        query = query.filter(models.Municipality.prefecture_code == prefecture_code)
+    if prefecture_name:
+        query = query.filter(models.Municipality.prefecture_name == prefecture_name)
+
+    if match == "exact":
+        name_condition = or_(
+            models.Municipality.municipality_name == normalized_name,
+            models.Municipality.municipality_kana == normalized_name,
+            and_(
+                models.Municipality.municipality_name.is_(None),
+                or_(
+                    models.Municipality.district_name == normalized_name,
+                    models.Municipality.district_kana == normalized_name,
+                ),
+            ),
+        )
+    else:
+        pattern = f"%{normalized_name}%"
+        conditions = [
+            models.Municipality.municipality_name.ilike(pattern),
+            models.Municipality.municipality_kana.ilike(pattern),
+        ]
+        if include_district:
+            conditions.extend(
+                [
+                    models.Municipality.district_name.ilike(pattern),
+                    models.Municipality.district_kana.ilike(pattern),
+                ]
+            )
+        name_condition = or_(*conditions)
+
+    return query.filter(name_condition).order_by(models.Municipality.code).limit(limit).all()
 
 
 @app.get("/api/v1/municipalities/{code}", response_model=schemas.Municipality, summary="標準地域の取得")

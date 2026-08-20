@@ -22,6 +22,7 @@
 主要エンドポイント:
 
 - `GET /api/v1/municipalities`
+- `GET /api/v1/municipalities/search`
 - `GET /api/v1/municipalities/{code}`
 - `GET /api/v1/municipalities/{code}/children`
 - `GET /api/v1/mergers`
@@ -38,6 +39,7 @@ docker compose up --build api
 API:
 
 - `GET http://localhost:8000/api/v1/municipalities`
+- `GET http://localhost:8000/api/v1/municipalities/search?name=函館市`
 - `GET http://localhost:8000/api/v1/municipalities/{code}`
 - `GET http://localhost:8000/api/v1/municipalities/{code}/children`
 - `GET http://localhost:8000/api/v1/mergers`
@@ -71,6 +73,24 @@ docker compose up --build api frontend
 ```text
 GET /api/v1/municipalities/01100/children
 ```
+
+## 市区町村名検索
+
+市区町村名またはふりがなから標準地域を検索できます。
+
+```text
+GET /api/v1/municipalities/search?name=函館市
+GET /api/v1/municipalities/search?name=はこだてし
+```
+
+主なクエリパラメータ:
+
+- `name`: 検索する市区町村名またはふりがな
+- `match`: `exact` または `partial`。省略時は `exact`
+- `prefecture_code`: 都道府県コードで絞り込み
+- `prefecture_name`: 都道府県名で絞り込み
+- `include_district`: `partial` 検索時に政令市・郡・支庁・振興局等も検索対象に含めるか。省略時は `true`
+- `limit`: 取得する最大件数。省略時は `20`
 
 ## Neonを使う場合
 
